@@ -1,172 +1,238 @@
 import random
 import pyautogui as pag
 import tkinter as tk
+from setup import Setup
 
-x = 1400
-y = 700
-vertical_speed = 0
-cycle = 0
-check = 4
-revive_num = [0]
-idle_num = [1, 2, 3, 4]
-attack_num = [10, 11, 12, 13, 15]
-walk_left = [6, 7]
-walk_right = [8, 9]
-bounce_up_num = [5]
-bounce_down_num = [14]
-death_num = [16]
-event_num = random.randrange(1,3,1) # start stop step // why 3 ?
-impath = '.\\assets\\slime'
-blue_path = impath+'_blue\\'
-purple_path = impath+'_purple\\'
+class Assignment:
 
-def choose_slime_color():  # main.py material - menu items
-    print("Choose slime color:")
-    print("1. Blue")
-    print("2. Purple")
-    choice = input("Enter the number of your choice: ")
-    if choice == '1':
-        return blue_path
-    elif choice == '2':
-        return purple_path
+    def __init__(self, setup):
+        self.window = setup.window
 
-path_color = choose_slime_color()
+        self.idle_fr = setup.idle
+        self.attack_right_fr = setup.attack_right
+        self.attack_left_fr = setup.attack_left
+        self.revive_fr = setup.revive
+        self.walk_left_fr = setup.walk_left
+        self.walk_right_fr = setup.walk_right
+        self.bounce_up_fr = setup.bounce_up
+        self.bounce_down_fr = setup.bounce_down
+        self.death_fr = setup.death
+        self.slide_left_fr = setup.slide_left
+        self.slide_right_fr = setup.slide_right
+        self.start_slide_left_fr = setup.start_slide_left
+        self.start_slide_right_fr = setup.start_slide_right
+        self.hurt_fr = setup.hurt
 
-window = tk.Tk()
+        self.dragging = False
+        self.drag_frame = 0
 
+        self.screen_width = self.window.winfo_screenwidth()
+        self.screen_height = self.window.winfo_screenheight()
+        self.slime_width = 150
+        self.slime_height = 150
+        self.x = self.window.winfo_screenwidth() // 2
+        self.y = self.window.winfo_screenheight() // 2
 
-idle = [tk.PhotoImage(file=path_color+'idle_left.gif', format='gif -index %i' % (i)) for i in range(7)]
-attack = [tk.PhotoImage(file=path_color+'attack_left.gif', format='gif -index %i' % (i)) for i in range(12)]
-# slide_left = [tk.PhotoImage(file=path_color+'slide_left.gif', format='gif -index %i' % (i)) for i in range(6)]
-# slide_right = [tk.PhotoImage(file=path_color+'slide_right.gif', format='gif -index %i' % (i)) for i in range(6)]
-revive = [tk.PhotoImage(file=path_color+'revive_right.gif', format='gif -index %i' % (i)) for i in range(7)]
-walk_left = [tk.PhotoImage(file=path_color+'walk_left.gif', format='gif -index %i' % (i)) for i in range(6)]
-walk_right = [tk.PhotoImage(file=path_color+'walk_right.gif', format='gif -index %i' % (i)) for i in range(6)]
-bounce_up =  [tk.PhotoImage(file=path_color+'bounce_displaced_left.gif', format='gif -index %i' % (i)) for i in range(8)]
-bounce_down =  [tk.PhotoImage(file=path_color+'bounce_displaced_right.gif', format='gif -index %i' % (i)) for i in range(8)]
-death = [tk.PhotoImage(file=path_color+'death.gif', format='gif -index %i' % (i)) for i in range(10)]
+        
+        self.animations = {
+            self.idle_slime: self.idle_fr,
+            self.walk_left_slime: self.walk_left_fr,
+            self.walk_right_slime: self.walk_right_fr,
+            self.bounce_up_slime: self.bounce_up_fr,
+            self.bounce_down_slime: self.bounce_down_fr,
+            self.attack_right_slime: self.attack_right_fr,
+            self.attack_left_slime: self.attack_left_fr,
+            self.slide_left_slime: self.slide_left_fr,
+            self.slide_right_slime: self.slide_right_fr,
+            self.start_slide_left_slime: self.start_slide_left_fr,
+            self.start_slide_right_slime: self.start_slide_right_fr,            
+            self.hurt_slime: self.hurt_fr
+        }
 
-def event(cycle, check, event_num, x):
-    # optimize. maybe switch case or dictionary mapping
-    if check == 0: #this is not used right ? 
-        frame = revive[cycle]
-        cycle, event_num = gif_loop(cycle, revive, event_num, 0, 0)
-    elif event_num in idle_num:
-        check = 0
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in attack_num:
-        check = 1
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in walk_left:
-        check = 2
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in walk_right:
-        check = 3
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in bounce_up_num:
-        check = 4
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in bounce_down_num:
-        check = 5
-        window.after(400, update, cycle, event_num, check, x)
-    elif event_num in death_num:
-        check = 6
-        window.after(400, update, cycle, event_num, check, x)
+        self.deathandrevive = {
+            self.revive_slime: self.revive_fr,
+            self.death_slime: self.death_fr
+        }
 
-def gif_loop(cycle, frames, event_num, first_num, last_num):
-    if cycle < len(frames) - 1: # what does this do ?
-        cycle += 1
-    else:
-        cycle = 0
-        event_num = random.randrange(first_num, last_num+1, 1)
-    return cycle, event_num
+        self.slide_transition = {
+            self.start_slide_left_slime: self.slide_left_slime,
+            self.start_slide_right_slime: self.slide_right_slime
+        }
 
-def choose_state():
-    return random.choices([0, 1, 2, 3, 5, 6], weights=[70, 5, 12, 13, 4, 4])[0]
+    def revive_slime(self):
+        return 0
 
-def update(cycle, check, event_num, x, y, vertical_speed):
-    if getattr(window, 'closing', False) and check != 7:
-        cycle = 0
-        check = 7
-        vertical_speed = 0
- # highkey hating this elif saga
-    if check == 0: #idle
-        frame = idle[cycle]
-        cycle, event_num = gif_loop(cycle, idle, event_num, 1, 9)
-    elif check == 1: #attack
-        frame = attack[cycle]
-        cycle, event_num = gif_loop(cycle, attack, event_num, 10, 10)
-    elif check == 2: #walk left
-        frame = walk_left[cycle]
-        cycle, event_num = gif_loop(cycle, walk_left, event_num, 1, 9)
-        x -= 3
-    elif check == 3: #walk right
-        frame = walk_right[cycle]
-        cycle, event_num = gif_loop(cycle, walk_right, event_num, 1, 9)
-        x += 3
-    elif check == 4: #revive
-        frame = revive[cycle]
-        cycle, event_num = gif_loop(cycle, revive, event_num, 0, 0)
-    elif check == 5: #bounce up
-        frame = bounce_up[cycle]
-        cycle, event_num = gif_loop(cycle, bounce_up, event_num, 0, 0)
-        y -= 3
-        x -= random.choice([0, 1, 2])
-    elif check == 6: #bounce down
-        frame = bounce_down[cycle]
-        cycle, event_num = gif_loop(cycle, bounce_down, event_num, 0, 0)
-        y += 3
-        x += random.choice([0, 1, 2])
-    elif check == 7: #death
-        frame = death[cycle]
-        cycle, event_num = gif_loop(cycle, death, event_num, 0, 0)
+    def idle_slime(self):
+        pass
 
-    if cycle == 0 and check == 7:
-        window.after(100, window.destroy)
+    def walk_left_slime(self):
+        self.x -= 3
+        self.window.geometry(f"+{self.x}+{self.y}")
+
+    def walk_right_slime(self):
+        self.x += 3
+        self.window.geometry(f"+{self.x}+{self.y}")
+
+    def bounce_up_slime(self):
+        self.y -= 3
+        self.x -= random.choice([0, 1, 2])
+        self.window.geometry(f"+{self.x}+{self.y}")
+
+    def bounce_down_slime(self):
+        self.y += 3
+        self.x += random.choice([0, 1, 2])
+        self.window.geometry(f"+{self.x}+{self.y}")
+
+    def attack_right_slime(self):
         return
-    elif cycle == 0:
-        check = choose_state()
 
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    x = max(0, min(x, screen_width - 100))
-    y += vertical_speed
-    if y <= 0 or y >= screen_height - 100:
-        vertical_speed *= -1
-        y = max(0, min(y, screen_height - 100))
+    def attack_left_slime(self):
+        return
 
-    window.geometry('100x100+' + str(x) + '+' + str(y))
+    def hurt_slime(self):
+        return
 
-    label.config(image=frame)
-    window.after(100, update, cycle, check, event_num, x, y, vertical_speed)
+    def slide_left_slime(self):
+        self.x -= 20
+        self.window.geometry(f"+{self.x}+{self.y}")
 
-def close_program():
-    if not getattr(window, 'closing', False): # unnecessary if not - can do just straight to if window closing
-        window.closing = True
+    def slide_right_slime(self):
+        self.x += 20
+        self.window.geometry(f"+{self.x}+{self.y}")
 
-def exit_on_escape(_mouse_event):
-    close_program()
+    def start_slide_left_slime(self):
+        pass
 
-def start_drag(mouse_event):
-    window.drag_start_x = mouse_event.x_root - window.winfo_x() # not working
-    window.drag_start_y = mouse_event.y_root - window.winfo_y()
+    def start_slide_right_slime(self):
+        pass
 
-def drag_window(mouse_event):
-    x = mouse_event.x_root - window.drag_start_x
-    y = mouse_event.y_root - window.drag_start_y
-    window.geometry('100x100+' + str(x) + '+' + str(y))
+    def death_slime(self):
+        return 0
+
+    def check_borders(self):
+        if self.x <= 0:
+            self.x = 0
+            return self.attack_left_slime
+        
+        elif self.x >= self.screen_width - self.slime_width:
+            self.x = self.screen_width - self.slime_width
+            return self.attack_right_slime
+
+        elif self.y <= 0:
+            self.y = 0
+            return self.hurt_slime
+
+        elif self.y >= self.screen_height - self.slime_height:
+            self.y = self.screen_height - self.slime_height
+            return self.hurt_slime
+
+        return None
 
 
-window.config(bg='black', highlightthickness=0)
-label = tk.Label(window, bd=0, bg='black', highlightthickness=0)
-window.overrideredirect(True)
-#window.wm_attributes('-transparentcolor', 'black')
-window.attributes('-topmost', True)
+    def choose_animation(self):
+        #this is fucked
+        choices = [
+            self.idle_slime,
+            self.walk_left_slime,
+            self.walk_right_slime,
+            self.bounce_up_slime,
+            self.bounce_down_slime,
+            self.idle_slime,
+            self.idle_slime,
+            self.idle_slime,
+            self.start_slide_right_slime,
+            self.start_slide_left_slime,
+        ]
+        return random.choice(choices)
 
-label.pack()
-label.bind('<Button-1>', start_drag)
-label.bind('<B1-Motion>', drag_window)
-window.protocol('WM_DELETE_WINDOW', close_program)
-window.bind_all('<Escape>', exit_on_escape)
-window.after(1, update, cycle, check, event_num, x, y, vertical_speed)
-window.mainloop()
+    def play_animation(self, cycle, behavior):
+        if self.dragging:
+            self.window.after(100, self.play_animation, cycle, behavior)
+            return
+
+        if behavior in self.deathandrevive:
+            frames = self.deathandrevive[behavior]
+        else:
+            frames = self.animations[behavior]
+
+        frame = frames[cycle]
+        self.label.configure(image=frame)
+
+        behavior()
+
+        new_behavior = self.check_borders()
+        if new_behavior is not None and new_behavior != behavior:
+            behavior = new_behavior
+            frames = self.animations[behavior]
+            cycle = 0
+            frame = frames[cycle]
+            self.label.configure(image=frame)
+
+        cycle += 1
+        if cycle >= len(frames):
+            cycle = 0
+
+            if behavior == self.revive_slime:
+                behavior = self.choose_animation()
+            elif behavior == self.death_slime:
+                self.window.destroy()
+                return
+            elif behavior in self.slide_transition:
+                behavior = self.slide_transition[behavior]
+            else:
+                behavior = self.choose_animation()
+
+        self.window.after(100, self.play_animation, cycle, behavior)
+
+    def on_close(self):
+        self.play_animation(0, self.death_slime)
+
+    def exit_on_escape(self, _mouse_event):  
+        self.play_animation(0, self.death_slime)
+        self.close_program()
+
+    def close_program(self):
+        if not getattr(self.window, 'closing', False):
+            self.window.closing = True
+
+    def drag_slime_animation(self, frame=0):
+        if not self.dragging:
+            return
+
+        self.label.configure(image=self.hurt_fr[frame])
+
+        frame = (frame + 1) % len(self.hurt_fr)
+        self.window.after(100, self.drag_slime_animation, frame)
+
+    def start_drag(self, event):
+        self.dragging = True
+        self.drag_offset_x = event.x_root - self.x
+        self.drag_offset_y = event.y_root - self.y
+        self.drag_slime_animation()
+
+    def drag_slime(self, event):
+        if self.dragging:
+            self.x = event.x_root - self.drag_offset_x
+            self.y = event.y_root - self.drag_offset_y
+            self.window.geometry(f"+{self.x}+{self.y}")
+    
+    def stop_drag(self, event):
+        self.dragging = False
+
+
+    def start_program(self):
+        self.window.config(bg='black', highlightthickness=0)
+        self.label = tk.Label(self.window, bd=0, bg='black', highlightthickness=0)
+        self.window.attributes('-transparentcolor', 'black')
+        self.window.overrideredirect(True)
+        self.window.attributes('-topmost', True)
+
+        self.label.place(x=0, y=0)
+        self.label.bind('<Button-1>', self.start_drag)
+        self.label.bind('<B1-Motion>', self.drag_slime)
+        self.label.bind('<ButtonRelease-1>', self.stop_drag)
+        self.window.geometry(f"150x150+{self.x}+{self.y}")        
+        self.window.after(1, self.play_animation, 0, self.revive_slime)
+        self.window.protocol('WM_DELETE_WINDOW', self.close_program)
+        self.window.bind_all('<Escape>', self.exit_on_escape)
+        self.window.mainloop()
