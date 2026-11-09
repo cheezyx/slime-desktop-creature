@@ -1,1 +1,2 @@
-# slime-desktop-creature
+A desktop pet WIP
+Experimental project
